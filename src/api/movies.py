@@ -22,18 +22,40 @@ def get_movie(movie_id: str):
     * `num_lines`: The number of lines the character has in the movie.
 
     """
+    def get_num_of_lines(charID, movieID):
+        """Given character ID and movie ID, returns the number of lines the character has in that movie"""
+        res = []
+        for line in db.lines:
+            if charID == line["character_id"] and movieID == line["movie_id"]:
+                res.append(line)
+        return len(res)
+    def get_characters_in_movie(movieID):
+        res = []
+        characters = db.characters
+        for character in characters:
+            if character["movie_id"] == movieID:
+                res.append(
+                    {
+                        "character_id": int(character["character_id"]),
+                        "character": character["name"],
+                        "num_lines": get_num_of_lines(character["character_id"], movieID)
+                    }
+                )
+        res = sorted(res, key=lambda x: x["num_lines"], reverse=True)
+        res = res[0 : 5]
+        return res
 
     for movie in db.movies:
-        if movie["movie_id"] == id:
-            print("movie found")
+        if movie["movie_id"] == movie_id:
+            return {"movie_id": int(movie["movie_id"]),
+                    "title": movie["title"],
+                    "top_characters": get_characters_in_movie(movie["movie_id"])}
 
     json = None
-
     if json is None:
         raise HTTPException(status_code=404, detail="movie not found.")
 
     return json
-
 
 class movie_sort_options(str, Enum):
     movie_title = "movie_title"
@@ -71,6 +93,26 @@ def list_movies(
     maximum number of results to return. The `offset` query parameter specifies the
     number of results to skip before returning results.
     """
-    json = None
+    movies = db.movies
+    if name:
+        movies = list(filter(lambda x: name.lower() in x["title"].lower(), movies))
 
+    json = []
+    for movie in movies:
+        json.append(
+            {
+                "movie_id": int(movie["movie_id"]),
+                "movie_title": movie["title"],
+                "year": movie["year"],
+                "imdb_rating": float(movie["imdb_rating"]),
+                "imdb_votes": int(movie["imdb_votes"])
+            }
+        )
+    if sort == movie_sort_options.movie_title:
+        json = sorted(json, key=lambda x: x["movie_title"])
+    if sort == movie_sort_options.year:
+        json = sorted(json, key=lambda x: x["year"])
+    if sort == movie_sort_options.rating:
+        json = sorted(json, key=lambda x: x["imdb_rating"], reverse=True)
+    json = json[offset: limit + offset]
     return json

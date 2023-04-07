@@ -1,9 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from enum import Enum
 from src import database as db
-
 router = APIRouter()
-
 
 @router.get("/characters/{id}", tags=["characters"])
 def get_character(id: str):
@@ -26,15 +24,63 @@ def get_character(id: str):
     * `number_of_lines_together`: The number of lines the character has with the
       originally queried character.
     """
-    for character in db.characters:
+    def get_lines(value):
+        lines = db.lines
+        totalLines = 0
+        for line in lines:
+            for val in value:
+                if line["conversation_id"] == val:
+                    totalLines += 1
+        return totalLines
+    def get_character_info(characterMap):
+        keys = list(characterMap.keys())
+        characters = db.characters
+        json = []
+        for key in keys:
+            gender = list(filter(lambda x: x["character_id"] == key, characters))[0]["gender"]
+            json.append(
+                {
+                    "character_id": int(key),
+                    "character": list(filter(lambda x: x["character_id"] == key, characters))[0]["name"],
+                    "gender": gender if gender != "" else None,
+                    "number_of_lines_together": get_lines(characterMap.get(key))
+                }
+            )
+        return json
+    def assign_conversations(charId, movieId):
+        conversations = db.conversations
+        characterMap = {}
+        for conversation in conversations:
+            if conversation["movie_id"] == movieId:
+                # check for union of both character ids
+                if conversation["character1_id"] == charId:
+                    if conversation["character2_id"] not in characterMap:
+                        characterMap.setdefault(conversation["character2_id"], []).append(conversation["conversation_id"])
+                    else:
+                        characterMap[conversation["character2_id"]].append(conversation["conversation_id"])
+                if conversation["character2_id"] == charId:
+                    if conversation["character1_id"] not in characterMap:
+                        characterMap.setdefault(conversation["character1_id"], []).append(conversation["conversation_id"])
+                    else:
+                        characterMap[conversation["character1_id"]].append(conversation["conversation_id"])
+        return get_character_info(characterMap)
+
+    characters = db.characters
+    movies = db.movies
+    for character in characters:
         if character["character_id"] == id:
-            print("character found")
+            top_convos = assign_conversations(character["character_id"], character["movie_id"])
+            return {
+                "character_id": int(character["character_id"]),
+                "character": character["name"],
+                "movie": list(filter(lambda x: x["movie_id"] == character["movie_id"], movies))[0]["title"],
+                "gender": character.get("gender") if character.get("gender") != "" else None,
+                "top_conversations": sorted(top_convos, key=lambda x: x["number_of_lines_together"], reverse=True)
+                }
 
     json = None
-
     if json is None:
-        raise HTTPException(status_code=404, detail="movie not found.")
-
+        raise HTTPException(status_code=404, detail="character not found.")
     return json
 
 
@@ -73,5 +119,45 @@ def list_characters(
     number of results to skip before returning results.
     """
 
-    json = None
+    def get_conversations(charID, movieID):
+        """Given character ID and movie ID, returns the number of lines
+        the character has in that movie"""
+        res = []
+        for line in db.lines:
+            if charID == line["character_id"] and movieID == line["movie_id"]:
+                res.append(line)
+        return len(res)
+
+    # accessing characters and movies database
+    characters = db.characters
+    movies = db.movies
+
+    # filter for characters whose name contains a string
+    if name:
+        characters = list(filter(lambda x: name.lower() in x["name"].lower(), characters))
+
+    # json is an endpoint of list of characters with required information
+    json = []
+    for character in characters:
+        json.append({
+            "character_id": int(character["character_id"]),
+            "character": character["name"],
+            "movie": list(filter(lambda x: x["movie_id"] == character["movie_id"],
+                                 movies))[0]["title"],
+            "number_of_lines": get_conversations(character["character_id"], character["movie_id"])
+        })
+
+    # sort the results by using the `sort` query
+    if sort == character_sort_options.character:
+        for i in json:
+            if i["character"] == "":
+                json.remove(i)
+        json = sorted(json, key=lambda x: x["character"])
+    if sort == character_sort_options.movie:
+        json = sorted(json, key=lambda x: x["movie"])
+    if sort == character_sort_options.number_of_lines:
+        json = sorted(json, key=lambda x: -x["number_of_lines"])
+
+    # pagination limit and offset query
+    json = json[offset: limit + offset]
     return json

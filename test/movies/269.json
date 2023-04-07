@@ -1,0 +1,30 @@
+{
+  "movie_id": 269,
+  "title": "the big lebowski",
+  "top_characters": [
+    {
+      "character_id":4057,
+      "character":"DUDE",
+      "num_lines":342
+    },
+    {"character_id":4065,
+      "character":"WALTER",
+      "num_lines":213
+    },
+    {
+      "character_id":4060,
+      "character":"MAUDE",
+      "num_lines":55
+    },
+    {
+      "character_id":4055,
+      "character":"DONNY",
+      "num_lines":39
+    },
+    {
+      "character_id":4058,
+      "character":"LEBOWSKI",
+      "num_lines":34
+    }
+  ]
+}

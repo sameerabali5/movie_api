@@ -1,0 +1,14 @@
+{
+  "character_id":5011,
+  "character":"\"BRILL\"",
+  "movie":"enemy of the state",
+  "gender":null,
+  "top_conversations":[
+    {
+      "character_id":5016,
+      "character":"DEAN",
+      "gender":"M",
+      "number_of_lines_together":27
+    }
+  ]
+}
