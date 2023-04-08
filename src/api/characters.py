@@ -126,7 +126,7 @@ def list_characters(
         for character_id in characters:
             if name.lower() not in (characters[character_id]["name"]).lower():
                 characters_to_remove.append(character_id)
-
+        characters = characters.copy()
         for character_id in characters_to_remove:
             del characters[character_id]
 

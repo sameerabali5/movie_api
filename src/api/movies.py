@@ -25,6 +25,8 @@ def get_movie(movie_id: str):
     def get_characters_in_movie(movieID):
         res = []
         characters = db.characters
+        print(len(characters))
+        print(movieID)
         lines = db.lines
         for character in characters:
             if characters[character]["movie_id"] == movieID:
@@ -40,12 +42,13 @@ def get_movie(movie_id: str):
         return res
 
     movies = db.movies
-    if movie_id in movies:
-        return {
-            "movie_id": int(movie_id),
-            "title": movies[movie_id]["title"],
-            "top_characters": get_characters_in_movie(movie_id)
-        }
+    for movie in movies:
+        if movie == movie_id:
+            return {
+                "movie_id": int(movie_id),
+                "title": movies[movie_id]["title"],
+                "top_characters": get_characters_in_movie(movie_id)
+            }
 
     json = None
     if json is None:
@@ -98,6 +101,7 @@ def list_movies(
             if name.lower() not in (movies[movie_id]["title"]).lower():
                 movies_to_remove.append(movie_id)
 
+        movies = movies.copy()
         for movie_id in movies_to_remove:
             del movies[movie_id]
 
