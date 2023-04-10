@@ -25,28 +25,36 @@ def get_character(id: str):
       originally queried character.
     """
     def top_conversations(charID, movieID):
+        """Function returns the list of characters that the character has the most conversations with,
+        sorted by number of lines together """
+        # access conversations database
         conversations = db.conversations
+
+        # map that points each character to all their conversationIDs
         map = {}
+
+        # iterate through conversations to find list of characters that have conversations
         for conversation in conversations:
             if conversations[conversation]["movie_id"] == movieID:
-                if conversations[conversation]["character1_id"] == charID:
-                    if conversations[conversation]["character2_id"] not in map:
-                        char = conversations[conversation]["character2_id"]
-                        map.setdefault(char, []).append(conversation)
-                    else:
-                        char = conversations[conversation]["character2_id"]
-                        map[char].append(conversation)
-                if conversations[conversation]["character2_id"] == charID:
-                    if conversations[conversation]["character1_id"] not in map:
-                        char = conversations[conversation]["character1_id"]
-                        map.setdefault(char, []).append(conversation)
-                    else:
-                        char = conversations[conversation]["character1_id"]
-                        map[char].append(conversation)
+                char1id = conversations[conversation]["character1_id"]
+                char2id = conversations[conversation]["character2_id"]
+                if char1id == charID:
+                    other_char = conversations[conversation]["character2_id"]
+                elif char2id == charID:
+                    other_char = conversations[conversation]["character1_id"]
+                else:
+                    continue
+                # append character_id and conversation to map
+                if other_char not in map:
+                    map.setdefault(other_char, []).append(conversation)
+                else:
+                    map[other_char].append(conversation)
 
         characters = db.characters
         lines = db.lines
         json = []
+
+        # iterate through character_ids in map and creates json
         for character_id in list(map.keys()):
             json.append(
                 {
@@ -61,8 +69,11 @@ def get_character(id: str):
             )
         return json
 
+    # accessing databases for results
     characters = db.characters
     movies = db.movies
+
+    # generates json with queried character along with the characters within movie
     if id in characters:
         top_convos = top_conversations(id, characters[id]["movie_id"])
         movie_id = characters[id]["movie_id"]
@@ -71,7 +82,8 @@ def get_character(id: str):
             "character": characters[id]["name"],
             "movie": movies[movie_id]["title"],
             "gender": (characters[id]["gender"] or None),
-            "top_conversations": sorted(top_convos, key=lambda x: -x["number_of_lines_together"])
+            "top_conversations": sorted(top_convos, key=lambda x:
+            (-x["number_of_lines_together"], x["character"]))
             }
 
     json = None
@@ -130,7 +142,7 @@ def list_characters(
         for character_id in characters_to_remove:
             del characters[character_id]
 
-    #json is an endpoint of list of characters with required information
+    # json is an endpoint of list of characters with required information
     json = []
     for character_id in list(characters.keys()):
         movie_id = characters[character_id]["movie_id"]
@@ -138,18 +150,19 @@ def list_characters(
             "character_id": int(character_id),
             "character": characters[character_id]["name"],
             "movie": movies[movie_id]["title"],
-            "number_of_lines": sum(v["character_id"] == character_id for v in lines.values())
+            "number_of_lines": sum(v["character_id"] ==
+                                   character_id for v in lines.values())
         })
 
     # sort the results by using the `sort` query
-    if sort == character_sort_options.character:
+    if sort == "character":
         for i in json:
             if i["character"] == "":
                 json.remove(i)
         json = sorted(json, key=lambda x: x["character"])
-    if sort == character_sort_options.movie:
+    if sort == "movie":
         json = sorted(json, key=lambda x: x["movie"])
-    if sort == character_sort_options.number_of_lines:
+    if sort == "number_of_lines":
         json = sorted(json, key=lambda x: -x["number_of_lines"])
 
     # pagination limit and offset query

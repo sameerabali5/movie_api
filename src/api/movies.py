@@ -23,10 +23,10 @@ def get_movie(movie_id: str):
 
     """
     def get_characters_in_movie(movieID):
+        """Function returns a list of top five characters within the movie sorted by the
+        number of lines the character has in the movie"""
         res = []
         characters = db.characters
-        print(len(characters))
-        print(movieID)
         lines = db.lines
         for character in characters:
             if characters[character]["movie_id"] == movieID:
@@ -38,7 +38,8 @@ def get_movie(movie_id: str):
                     }
                 )
         res = sorted(res, key=lambda x: -x["num_lines"])
-        res = res[0 : 5]
+        if len(res) >= 5:
+            res = res[0 : 5]
         return res
 
     movies = db.movies
@@ -49,7 +50,6 @@ def get_movie(movie_id: str):
                 "title": movies[movie_id]["title"],
                 "top_characters": get_characters_in_movie(movie_id)
             }
-
     json = None
     if json is None:
         raise HTTPException(status_code=404, detail="movie not found.")
@@ -92,6 +92,7 @@ def list_movies(
     maximum number of results to return. The `offset` query parameter specifies the
     number of results to skip before returning results.
     """
+    # accessing movies database
     movies = db.movies
 
     # filter for movies whose title contains a string
@@ -105,6 +106,7 @@ def list_movies(
         for movie_id in movies_to_remove:
             del movies[movie_id]
 
+    # json is an endpoint of list of movies with required information
     json = []
     for movie_id in list(movies.keys()):
         json.append(
@@ -116,11 +118,15 @@ def list_movies(
                 "imdb_votes": int(movies[movie_id]["imdb_votes"])
             }
         )
+
+    # sort the results by using the `sort` query
     if sort == movie_sort_options.movie_title:
         json = sorted(json, key=lambda x: x["movie_title"])
     if sort == movie_sort_options.year:
         json = sorted(json, key=lambda x: x["year"])
     if sort == movie_sort_options.rating:
         json = sorted(json, key=lambda x: -x["imdb_rating"])
+
+    # pagination limit and offset query
     json = json[offset: limit + offset]
     return json
