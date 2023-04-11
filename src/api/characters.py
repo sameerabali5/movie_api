@@ -24,6 +24,9 @@ def get_character(id: str):
     * `number_of_lines_together`: The number of lines the character has with the
       originally queried character.
     """
+    # accessing databases for results
+    characters = db.characters
+    movies = db.movies
     def top_conversations(charID, movieID):
         """Function returns the list of characters that the character has the most conversations with,
         sorted by number of lines together """
@@ -69,10 +72,6 @@ def get_character(id: str):
             )
         return json
 
-    # accessing databases for results
-    characters = db.characters
-    movies = db.movies
-
     # generates json with queried character along with the characters within movie
     if id in characters:
         top_convos = top_conversations(id, characters[id]["movie_id"])
@@ -90,7 +89,6 @@ def get_character(id: str):
     if json is None:
         raise HTTPException(status_code=404, detail="character not found.")
     return json
-
 
 class character_sort_options(str, Enum):
     character = "character"
@@ -128,33 +126,13 @@ def list_characters(
     """
 
     # accessing characters and movies database
-    characters = db.characters
-    movies = db.movies
-    lines = db.lines
+    json = db.list_characters.copy()
 
     # filter for characters whose name contains a string
     if name:
-        characters_to_remove = []
-        for character_id in characters:
-            if name.lower() not in (characters[character_id]["name"]).lower():
-                characters_to_remove.append(character_id)
-        characters = characters.copy()
-        for character_id in characters_to_remove:
-            del characters[character_id]
+        json = [d for d in json if name.lower() in d["character"].lower()]
 
-    # json is an endpoint of list of characters with required information
-    json = []
-    for character_id in list(characters.keys()):
-        movie_id = characters[character_id]["movie_id"]
-        json.append({
-            "character_id": int(character_id),
-            "character": characters[character_id]["name"],
-            "movie": movies[movie_id]["title"],
-            "number_of_lines": sum(v["character_id"] ==
-                                   character_id for v in lines.values())
-        })
-
-    # sort the results by using the `sort` query
+    # sort json using sort query
     if sort == "character":
         for i in json:
             if i["character"] == "":
@@ -164,6 +142,7 @@ def list_characters(
         json = sorted(json, key=lambda x: x["movie"])
     if sort == "number_of_lines":
         json = sorted(json, key=lambda x: -x["number_of_lines"])
+
 
     # pagination limit and offset query
     json = json[offset: limit + offset]
