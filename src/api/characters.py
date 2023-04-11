@@ -28,7 +28,8 @@ def get_character(id: str):
     characters = db.characters
     movies = db.movies
     def top_conversations(charID, movieID):
-        """Function returns the list of characters that the character has the most conversations with,
+        """Function returns the list of characters that the character has
+        the most conversations with,
         sorted by number of lines together """
         # access conversations database
         conversations = db.conversations
@@ -36,7 +37,8 @@ def get_character(id: str):
         # map that points each character to all their conversationIDs
         map = {}
 
-        # iterate through conversations to find list of characters that have conversations
+        # iterate through conversations to find list of characters that have
+        # conversations
         for conversation in conversations:
             if conversations[conversation]["movie_id"] == movieID:
                 char1id = conversations[conversation]["character1_id"]
