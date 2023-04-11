@@ -1,5 +1,4 @@
 import csv
-import collections
 
 print("reading movies")
 
@@ -40,11 +39,10 @@ with open('lines.csv', mode="r", encoding="utf8") as csv_file:
         else:
             number_of_lines[t] += 1
 
-# sorting for characters
+# sort characters
 sortedCharacters = sorted(charactersO, key=lambda d: d['name'])
 sortedMovies= sorted(charactersO, key=lambda d: movies[d['movie_id']]["title"])
 sortedLines = dict(sorted(number_of_lines.items(), key=lambda i: -int(i[1])))
-
 
 
 
