@@ -27,14 +27,14 @@ def get_movie(movie_id: str):
         number of lines the character has in the movie"""
         res = []
         characters = db.characters
-        lines = db.lines
+        sortedLines = db.sortedLines
         for character in characters:
             if characters[character]["movie_id"] == movieID:
                 res.append(
                     {
                         "character_id": int(character),
                         "character": characters[character]["name"],
-                        "num_lines": sum(v["character_id"] == character for v in lines.values())
+                        "num_lines": sortedLines[(character, movieID)]
                     }
                 )
         res = sorted(res, key=lambda x: -x["num_lines"])
@@ -93,40 +93,34 @@ def list_movies(
     number of results to skip before returning results.
     """
     # accessing movies database
-    movies = db.movies
+    sortedTitle = db.sortedTitle
+    sortedYear = db.sortedYear
+    sortedRating = db.sortedRating
+
+    lst = []
+    if sort == movie_sort_options.movie_title:
+        lst = sortedTitle
+    if sort == movie_sort_options.year:
+        lst = sortedYear
+    if sort == movie_sort_options.rating:
+        lst = sortedRating
 
     # filter for movies whose title contains a string
-    if name:
-        movies_to_remove = []
-        for movie_id in movies:
-            if name.lower() not in (movies[movie_id]["title"]).lower():
-                movies_to_remove.append(movie_id)
+    if name != "":
+        lst = list(filter(lambda x: name.lower() in x["title"].lower(), lst))
 
-        movies = movies.copy()
-        for movie_id in movies_to_remove:
-            del movies[movie_id]
-
-    # json is an endpoint of list of movies with required information
     json = []
-    for movie_id in list(movies.keys()):
-        json.append(
-            {
-                "movie_id": int(movie_id),
-                "movie_title": movies[movie_id]["title"],
-                "year": movies[movie_id]["year"],
-                "imdb_rating": float(movies[movie_id]["imdb_rating"]),
-                "imdb_votes": int(movies[movie_id]["imdb_votes"])
-            }
-        )
-
-    # sort the results by using the `sort` query
-    if sort == movie_sort_options.movie_title:
-        json = sorted(json, key=lambda x: x["movie_title"])
-    if sort == movie_sort_options.year:
-        json = sorted(json, key=lambda x: x["year"])
-    if sort == movie_sort_options.rating:
-        json = sorted(json, key=lambda x: -x["imdb_rating"])
-
-    # pagination limit and offset query
-    json = json[offset: limit + offset]
+    for dict in lst:
+        x = {
+                "movie_id": int(dict["movie_id"]),
+                "movie_title": dict["title"],
+                "year": dict["year"],
+                "imdb_rating": float(dict["imdb_rating"]),
+                "imdb_votes": int(dict["imdb_votes"])
+        }
+        if len(json) < limit:
+            json.append(x)
+        else:
+            break
+    json = json[offset: len(json)]
     return json
