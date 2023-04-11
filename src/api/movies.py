@@ -15,12 +15,10 @@ def get_movie(movie_id: str):
     * `top_characters`: A list of characters that are in the movie. The characters
       are ordered by the number of lines they have in the movie. The top five
       characters are listed.
-
     Each character is represented by a dictionary with the following keys:
     * `character_id`: the internal id of the character.
     * `character`: The name of the character.
     * `num_lines`: The number of lines the character has in the movie.
-
     """
     def get_characters_in_movie(movieID):
         """Function returns a list of top five characters within the movie sorted by the
@@ -62,6 +60,7 @@ class movie_sort_options(str, Enum):
     rating = "rating"
 
 
+
 # Add get parameters
 @router.get("/movies/", tags=["movies"])
 def list_movies(
@@ -93,31 +92,11 @@ def list_movies(
     number of results to skip before returning results.
     """
     # accessing movies database
-    movies = db.movies
+    json = db.list_movies.copy()
 
     # filter for movies whose title contains a string
     if name:
-        movies_to_remove = []
-        for movie_id in movies:
-            if name.lower() not in (movies[movie_id]["title"]).lower():
-                movies_to_remove.append(movie_id)
-
-        movies = movies.copy()
-        for movie_id in movies_to_remove:
-            del movies[movie_id]
-
-    # json is an endpoint of list of movies with required information
-    json = []
-    for movie_id in list(movies.keys()):
-        json.append(
-            {
-                "movie_id": int(movie_id),
-                "movie_title": movies[movie_id]["title"],
-                "year": movies[movie_id]["year"],
-                "imdb_rating": float(movies[movie_id]["imdb_rating"]),
-                "imdb_votes": int(movies[movie_id]["imdb_votes"])
-            }
-        )
+        json = [d for d in json if name.lower() in d["movie_title"].lower()]
 
     # sort the results by using the `sort` query
     if sort == movie_sort_options.movie_title:
