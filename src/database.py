@@ -44,6 +44,11 @@ sortedCharacters = sorted(charactersO, key=lambda d: d['name'])
 sortedMovies= sorted(charactersO, key=lambda d: movies[d['movie_id']]["title"])
 sortedLines = dict(sorted(number_of_lines.items(), key=lambda i: -int(i[1])))
 
+# sort movies
+sortedTitle = sorted(moviesO, key=lambda d: d['title'])
+sortedYear = sorted(moviesO, key=lambda d: d['year'])
+sortedRating = sorted(moviesO, key=lambda d: -float(d['imdb_rating']))
+
 
 
 
