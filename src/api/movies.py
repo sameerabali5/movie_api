@@ -34,7 +34,8 @@ def get_movie(movie_id: str):
                     {
                         "character_id": int(character),
                         "character": characters[character]["name"],
-                        "num_lines": sum(v["character_id"] == character for v in lines.values())
+                        "num_lines": sum(v["character_id"] == 
+                                         character for v in lines.values())
                     }
                 )
         res = sorted(res, key=lambda x: -x["num_lines"])
