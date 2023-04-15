@@ -34,12 +34,14 @@ def get_line(line_id: str):
 @router.get("/conversations/{conversation_id}", tags=["lines"])
 def get_conversations(conversation_id: str):
     """
-    This endpoint returns a single conversation by its identifier. For each conversation_id it returns:
+    This endpoint returns a single conversation by its identifier.
+    For each conversation_id it returns:
     * `movie_id`: the internal id of the movie in which the conversation takes place.
     * `title`: The title of the movie.
     * 'char1_name': name of character1 in conversation.
     * 'char2_name': name of character2 in conversation.
-    * 'dialogue: a list of line_texts that occurred between both characters for that specific
+    * 'dialogue: a list of line_texts that occurred between both characters
+    for that specific
                 conversation_id
     """
     characters = db.characters
@@ -50,9 +52,12 @@ def get_conversations(conversation_id: str):
         return (
             {
                 "movie_id": conversations[conversation_id]["movie_id"],
-                "title": movies[conversations[conversation_id]["movie_id"]]["title"],
-                "char1_name": characters[conversations[conversation_id]["character1_id"]]["name"],
-                "char2_name": characters[conversations[conversation_id]["character2_id"]]["name"],
+                "title": movies[conversations[conversation_id]["movie_id"]]
+                ["title"],
+                "char1_name": characters[conversations[conversation_id]
+                ["character1_id"]]["name"],
+                "char2_name": characters[conversations[conversation_id]
+                ["character2_id"]]["name"],
                 "dialogue": conversation_id_lines.get(conversation_id)
             }
         )
