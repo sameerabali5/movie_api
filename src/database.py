@@ -1,6 +1,52 @@
 import csv
+import os
+import io
+from supabase import Client, create_client
 
 print("reading movies")
+
+
+# DO NOT CHANGE THIS TO BE HARDCODED. ONLY PULL FROM ENVIRONMENT VARIABLES.
+supabase_api_key = os.environ.get("SUPABASE_API_KEY")
+supabase_url = os.environ.get("SUPABASE_URL")
+
+supabase: Client = create_client(supabase_url, supabase_api_key)
+
+sess = supabase.auth.get_session()
+
+# TODO: Below is purely an example of reading and then writing a csv from supabase.
+# You should delete this code for your working example.
+
+# START PLACEHOLDER CODE
+
+# Reading in the log file from the supabase bucket
+log_csv = (
+    supabase.storage.from_("movie-api")
+    .download("movie_conversations_log.csv")
+    .decode("utf-8")
+)
+
+logs = []
+for row in csv.DictReader(io.StringIO(log_csv), skipinitialspace=True):
+    logs.append(row)
+
+
+# Writing to the log file and uploading to the supabase bucket
+def upload_new_log():
+    output = io.StringIO()
+    csv_writer = csv.DictWriter(
+        output, fieldnames=["post_call_time", "movie_id_added_to"]
+    )
+    csv_writer.writeheader()
+    csv_writer.writerows(logs)
+    supabase.storage.from_("movie-api").upload(
+        "movie_conversations_log.csv",
+        bytes(output.getvalue(), "utf-8"),
+        {"x-upsert": "true"},
+    )
+
+
+# END PLACEHOLDER CODE
 
 with open("movies.csv", mode="r", encoding="utf8") as csv_file:
     moviesO = [
@@ -82,5 +128,3 @@ sortedRating = sorted(moviesO, key=lambda d: -float(d['imdb_rating']))
 sortedLineSort = sorted(lines0, key=lambda d: d['line_sort'])
 sortedLineText = sorted(lines0, key=lambda d: d['line_text'])
 sortedLineId = sorted(lines0, key=lambda d: d['line_id'])
-
-

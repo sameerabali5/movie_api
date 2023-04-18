@@ -29,41 +29,35 @@ def test_characters():
         assert response.json() == json.load(f)
 
 def test_sort_filter():
-    response = client.get(
-        "/characters/?name=amy&limit=50&offset=0&sort=number_of_lines"
-    )
+    response = client.get("/movies/?name=big&limit=50&offset=0&sort=rating")
     assert response.status_code == 200
 
     with open(
-        "test/characters/characters-name=amy&limit=50&offset=0&sort=number_of_lines.json",
+        "test/movies/movies-name=big&limit=50&offset=0&sort=rating.json",
         encoding="utf-8",
     ) as f:
         assert response.json() == json.load(f)
 
 def test_sort_filter_2():
-    response = client.get(
-        "/characters/?name=amy&limit=50&offset=0&sort=character"
-    )
+    response = client.get("/movies/?name=big&limit=50&offset=0&sort=year")
     assert response.status_code == 200
 
     with open(
-        "test/characters/characters-name=amy&limit=50&offset=0&sort=character.json",
+        "test/movies/movies-name=big&limit=50&offset=0&sort=year.json",
         encoding="utf-8",
     ) as f:
         assert response.json() == json.load(f)
 
 def test_sort_filter_3():
-    response = client.get(
-        "/characters/?name=amy&limit=50&offset=0&sort=movie"
-    )
+    response = client.get("/movies/?name=big&limit=50&offset=0&sort=movie_title")
     assert response.status_code == 200
 
     with open(
-        "test/characters/characters-name=amy&limit=50&offset=0&sort=movie.json",
+        "test/movies/movies-name=big&limit=50&offset=0&sort=movie_title.json",
         encoding="utf-8",
     ) as f:
         assert response.json() == json.load(f)
 
 def test_404():
-    response = client.get("/characters/400")
+    response = client.get("/movies/1")
     assert response.status_code == 404
