@@ -2,8 +2,6 @@ from fastapi import APIRouter, HTTPException
 from src import database as db
 from pydantic import BaseModel
 from typing import List
-import random
-from datetime import datetime
 
 
 # FastAPI is inferring what the request body should look like
