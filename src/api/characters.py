@@ -1,13 +1,10 @@
 from fastapi import APIRouter, HTTPException
 from enum import Enum
-from collections import Counter
-
-from fastapi.params import Query
 from src import database as db
 router = APIRouter()
 
 @router.get("/characters/{id}", tags=["characters"])
-def get_character(id: int):
+def get_character(id: str):
     """
     This endpoint returns a single character by its identifier. For each character
     it returns:
@@ -38,7 +35,7 @@ def get_character(id: int):
         # map that points each character to all their conversationIDs
         map = {}
 
-        # iterate through conversations to find list of characters 
+        # iterate through conversations to find list of characters
         # that have conversations
         for conversation in conversations:
             if conversations[conversation]["movie_id"] == movieID:
@@ -176,5 +173,4 @@ def list_characters(
             break
     json = json[offset: len(json)]
     return json
-
 

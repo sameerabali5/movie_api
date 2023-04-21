@@ -5,8 +5,9 @@ from src import database as db
 router = APIRouter()
 
 
+# include top 3 actors by number of lines
 @router.get("/movies/{movie_id}", tags=["movies"])
-def get_movie(movie_id: int):
+def get_movie(movie_id: str):
     """
     This endpoint returns a single movie by its identifier. For each movie it returns:
     * `movie_id`: the internal id of the movie.
@@ -52,6 +53,7 @@ def get_movie(movie_id: int):
     json = None
     if json is None:
         raise HTTPException(status_code=404, detail="movie not found.")
+
     return json
 
 class movie_sort_options(str, Enum):
@@ -90,7 +92,6 @@ def list_movies(
     maximum number of results to return. The `offset` query parameter specifies the
     number of results to skip before returning results.
     """
-
     # accessing movies database
     sortedTitle = db.sortedTitle
     sortedYear = db.sortedYear

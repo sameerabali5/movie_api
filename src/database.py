@@ -2,51 +2,114 @@ import csv
 import os
 import io
 from supabase import Client, create_client
-
-print("reading movies")
-
+import dotenv
 
 # DO NOT CHANGE THIS TO BE HARDCODED. ONLY PULL FROM ENVIRONMENT VARIABLES.
+dotenv.load_dotenv()
 supabase_api_key = os.environ.get("SUPABASE_API_KEY")
 supabase_url = os.environ.get("SUPABASE_URL")
+
+if supabase_api_key is None or supabase_url is None:
+    raise Exception(
+        "You must set the SUPABASE_API_KEY and SUPABASE_URL environment variables."
+    )
 
 supabase: Client = create_client(supabase_url, supabase_api_key)
 
 sess = supabase.auth.get_session()
 
-# TODO: Below is purely an example of reading and then writing a csv from supabase.
-# You should delete this code for your working example.
-
-# START PLACEHOLDER CODE
-
 # Reading in the log file from the supabase bucket
-log_csv = (
+lines_csv = (
     supabase.storage.from_("movie-api")
-    .download("movie_conversations_log.csv")
+    .download("lines.csv")
     .decode("utf-8")
 )
 
-logs = []
-for row in csv.DictReader(io.StringIO(log_csv), skipinitialspace=True):
-    logs.append(row)
+conversations_csv = (
+    supabase.storage.from_("movie-api")
+    .download("conversations.csv")
+    .decode("utf-8")
+)
+
+lines_to_add = []
+conversations_to_add = []
+
+lines_logs = list(csv.DictReader(io.StringIO(lines_csv),
+                                 skipinitialspace=True))
+
+lines0 = [{k: v for k, v in row.items()} for row in
+          csv.DictReader(io.StringIO(lines_csv), skipinitialspace=True)]
+
+lines = {row.pop("line_id"): row for row in
+         csv.DictReader(io.StringIO(lines_csv), skipinitialspace=True)}
+
+number_of_lines = {}
+for row in lines_logs:
+    t = (row["character_id"], row["movie_id"])
+    number_of_lines[t] = number_of_lines.get(t, 0) + 1
+
+conversation_id_lines = {}
+for row in lines_logs:
+    conversation_id_lines.setdefault(row["conversation_id"], []).\
+        append(row["line_text"])
+
+
+conversations_logs = []
+for row in csv.DictReader(io.StringIO(conversations_csv),
+                          skipinitialspace=True):
+    conversations_logs.append(row)
+
+conversations = {row.pop("conversation_id"): row for row in
+                 csv.DictReader(io.StringIO(conversations_csv),
+                                skipinitialspace=True)}
 
 
 # Writing to the log file and uploading to the supabase bucket
-def upload_new_log():
+def update_lines_log():
     output = io.StringIO()
     csv_writer = csv.DictWriter(
-        output, fieldnames=["post_call_time", "movie_id_added_to"]
+        output, fieldnames=["line_id", "character_id", "movie_id",
+                            "conversation_id", "line_sort", "line_text"]
     )
     csv_writer.writeheader()
-    csv_writer.writerows(logs)
+    csv_writer.writerows(lines_logs)
+
+    for row in lines_to_add:
+        lines0.append({k: v for k, v in row.items()})
+
+        lines[row["line_id"]] = row
+
+        t = (row["character_id"], row["movie_id"])
+        number_of_lines[t] += 1
+
+        conv = row["conversation_id"]
+        dialogue = row["line_text"]
+        conversation_id_lines.setdefault(conv, []).append(dialogue)
+    lines_to_add.clear()
+
     supabase.storage.from_("movie-api").upload(
-        "movie_conversations_log.csv",
+        "lines.csv",
         bytes(output.getvalue(), "utf-8"),
         {"x-upsert": "true"},
     )
+def update_convos_log():
+    output = io.StringIO()
+    csv_writer = csv.DictWriter(
+        output, fieldnames=["conversation_id", "character1_id", "character2_id",
+                            "movie_id"]
+    )
+    csv_writer.writeheader()
+    csv_writer.writerows(conversations_logs)
 
+    for row in conversations_to_add:
+        conversations[row["conversation_id"]] = row
+    conversations_to_add.clear()
 
-# END PLACEHOLDER CODE
+    supabase.storage.from_("movie-api").upload(
+        "conversations.csv",
+        bytes(output.getvalue(), "utf-8"),
+        {"x-upsert": "true"},
+    )
 
 with open("movies.csv", mode="r", encoding="utf8") as csv_file:
     moviesO = [
@@ -58,6 +121,7 @@ with open("movies.csv", mode="r", encoding="utf8") as csv_file:
     movies = csv.DictReader(csv_file)
     movies = {row.pop("movie_id"): row for row in movies}
 
+
 with open("characters.csv", mode="r", encoding="utf8") as csv_file:
     charactersO = [
         {k: v for k, v in row.items()}
@@ -68,49 +132,6 @@ with open("characters.csv", mode="r", encoding="utf8") as csv_file:
     characters = csv.DictReader(csv_file)
     characters = {row.pop("character_id"): row for row in characters}
 
-with open("conversations.csv", mode="r", encoding="utf8") as csv_file:
-    conversations = csv.DictReader(csv_file)
-    conversations = {row.pop("conversation_id"): row for row in conversations}
-
-with open("lines.csv", mode="r", encoding="utf8") as csv_file:
-    lines0 = [
-        {k: v for k, v in row.items()}
-        for row in csv.DictReader(csv_file, skipinitialspace=True)
-    ]
-
-with open("lines.csv", mode="r", encoding="utf8") as csv_file:
-    lines = csv.DictReader(csv_file)
-    lines = {row.pop("line_id"): row for row in lines}
-
-
-number_of_lines = {}
-with open('lines.csv', mode="r", encoding="utf8") as csv_file:
-    for row in csv.DictReader(csv_file):
-        t = (row["character_id"], row["movie_id"])
-        if t not in number_of_lines.keys():
-            number_of_lines[t] = 1
-        else:
-            number_of_lines[t] += 1
-
-number_of_lines = {}
-with open('lines.csv', mode="r", encoding="utf8") as csv_file:
-    for row in csv.DictReader(csv_file):
-        t = (row["character_id"], row["movie_id"])
-        if t not in number_of_lines.keys():
-            number_of_lines[t] = 1
-        else:
-            number_of_lines[t] += 1
-
-
-conversation_id_lines = {}
-with open('lines.csv', mode="r", encoding="utf8") as csv_file:
-    for row in csv.DictReader(csv_file):
-        conv = row["conversation_id"]
-        dialogue = row["line_text"]
-        if conv not in conversation_id_lines.keys():
-            conversation_id_lines.setdefault(conv, []).append(dialogue)
-        else:
-            conversation_id_lines[conv].append(dialogue)
 
 #between characters and lines
 sortedLines = dict(sorted(number_of_lines.items(), key=lambda i: -int(i[1])))
