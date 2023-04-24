@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 from src.api.server import app
+from src import database as db
 
 client = TestClient(app)
 
@@ -16,7 +17,9 @@ def test_post_1():
                           ]
                         })
     assert response.status_code == 200
-    assert response.json() == 83074
+    lastConvo = db.conversations_logs[-1]
+    conversation_id = int(lastConvo["conversation_id"])
+    assert response.json() == conversation_id
 
 def test_post_2():
     response = client.post("/movies/615/conversations/", json={
