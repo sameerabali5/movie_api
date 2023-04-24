@@ -3,15 +3,20 @@
 *sameera balijepalli*
 
 - Areas where my code does function
-    - When new conversations get added, the earlier endpoints I developed before still work correctly based on the new data as it gets added.
-    - My previous endpoints continue to work accordingly even after add_conversations endpoint was implemented.
-    - Two tests cases were made where the conversation_id 83074 was generated. Hence, if you test with the end point /conversations/83074, you’ll see that the line for this request saying `testing post request 1 to movie_id 333`
-    - Back-to-back post requests made and data being reflected after.
-    - No conversation_id can be replicated or replaced since each conversation generated has a unique conversation_id, which is one value higher than the previous conversation_id. This same applies for line_id, so no line can be replicated or replaced by a different conversation / character / movie / line_text since each line is unique due to its line_id.
+    - When new conversations get added, the earlier endpoints I developed before still work correctly
+      based on the new data as it gets added.
+    - No conversation_id can be replicated or replaced since each conversation generated has a unique
+      conversation_id, which is one value higher than the previous conversation_id. This same applies
+      for line_id, so no line can be replicated or replaced by a different
+      conversation / character / movie / line_text since each line is unique due to its line_id.
         - The existing data and new data being created is always preserved and stored in a way that cannot be modified.
         - New data can only be written, but cannot change already existing data or previously sent post requests
+    - Highlights why a post request was unsuccessful
 
 - Areas where my code does not function
     - My tests are written in a way where a post-request was made and the conversation_id generated is 83074.
-        - If more post requests are sent during evaluation, then my current tests for characters, movies, lines, and conversations would also need to be updated to reflect the new data being sent in.
-        - Additionally, if my same tests run more than one time then my response.json() throws an assertion error because a new ID is being generated everytime a post request is sent.
+        - If more post requests are sent during evaluation, then my current tests for characters, movies,
+        and lines would also need to be updated to reflect the change in data.
+    - Multiple simultaneous calls to your service
+        - If more than one user sent in a request at the same time
+
