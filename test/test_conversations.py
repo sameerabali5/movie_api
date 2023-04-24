@@ -12,7 +12,7 @@ def test_post_1():
                           "lines": [
                             {
                               "character_id": 9024,
-                              "line_text": "testing post request 1"
+                              "line_text": "testing post request through IDE"
                             }
                           ]
                         })
