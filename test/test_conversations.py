@@ -1,24 +1,90 @@
 from fastapi.testclient import TestClient
-
 from src.api.server import app
-
-import json
 
 client = TestClient(app)
 
-def test_get_post_1():
-    response = client.get("/conversations/83074")
+
+def test_post_1():
+    response = client.post("/movies/615/conversations/", json={
+                          "character_1_id": 9024,
+                          "character_2_id": 9017,
+                          "lines": [
+                            {
+                              "character_id": 9024,
+                              "line_text": "testing post request 1"
+                            }
+                          ]
+                        })
     assert response.status_code == 200
+    assert response.json() == 83074
 
-    #added a new conversation_id: 83074
-    with open("test/conversations/post/83074.json", encoding="utf-8") as f:
-        assert response.json() == json.load(f)
+def test_post_2():
+    response = client.post("/movies/615/conversations/", json={
+                          "character_1_id": 9024,
+                          "character_2_id": 9024,
+                          "lines": [
+                            {
+                              "character_id": 9024,
+                              "line_text": "testing post request 1"
+                            }
+                          ]
+                        })
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Characters are not unique."}
+
+def test_post_3():
+    response = client.post("/movies/615/conversations/", json={
+                          "character_1_id": 0,
+                          "character_2_id": 1,
+                          "lines": [
+                            {
+                              "character_id": 0,
+                              "line_text": "testing post request 1"
+                            }
+                          ]
+                        })
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Characters not in movie."}
+
+def test_post_4():
+    response = client.post("/movies/617/conversations/", json={
+                          "character_1_id": 0,
+                          "character_2_id": 1,
+                          "lines": [
+                            {
+                              "character_id": 0,
+                              "line_text": "testing post request 1"
+                            }
+                          ]
+                        })
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Movie not found."}
 
 
-def test_get_post_2():
-    response = client.get("/characters/5011")
-    assert response.status_code == 200
+def test_post_5():
+    response = client.post("/movies/615/conversations/", json={
+                          "character_1_id": 9024,
+                          "character_2_id": 9017,
+                          "lines": [
+                            {
+                              "character_id": 0,
+                              "line_text": "testing post request 1"
+                            }
+                          ]
+                        })
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Invalid line."}
 
-    # added a new conversation_id: 83074, hence, the number of lines increased by 1
-    with open("test/conversations/post/5011.json", encoding="utf-8") as f:
-        assert response.json() == json.load(f)
+def test_post_6():
+    response = client.post("/movies/615/conversations/", json={
+                          "character_1_id": 9025,
+                          "character_2_id": 9017,
+                          "lines": [
+                            {
+                              "character_id": 0,
+                              "line_text": "testing post request 1"
+                            }
+                          ]
+                        })
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Character not found."}
