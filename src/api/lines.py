@@ -2,6 +2,8 @@ from fastapi import APIRouter, HTTPException
 from enum import Enum
 from src import database as db
 router = APIRouter()
+import sqlalchemy
+from sqlalchemy import inspect
 
 @router.get("/lines/{line_id}", tags=["lines"])
 def get_line(line_id: str):
@@ -13,19 +15,30 @@ def get_line(line_id: str):
     * `title`: The title of the movie.
     * `line': the line said by character in the movie.
     """
-    lines = db.lines
-    characters = db.characters
-    movies = db.movies
-    if line_id in lines.keys():
-        return (
-            {
-                "character_id": lines[line_id]["character_id"],
-                "name": characters[lines[line_id]["character_id"]]["name"],
-                "movie_id": lines[line_id]["movie_id"],
-                "title": movies[lines[line_id]["movie_id"]]["title"],
-                "line": lines[line_id]["line_text"]
-            }
-        )
+    stmt = f"""SELECT
+                    lines.character_id AS character_id,
+                    characters.name AS name,
+                    lines.movie_id AS movie_id,
+                    movies.title AS title,
+                    lines.line_text AS line
+                FROM
+                    lines
+                    JOIN characters ON lines.character_id = characters.character_id
+                    JOIN movies ON lines.movie_id = movies.movie_id
+                WHERE
+                    lines.line_id = {line_id}"""
+    with db.engine.connect() as conn:
+        result = conn.execute(sqlalchemy.text(stmt))
+        for row in result:
+            return (
+                {
+                    "character_id": row.character_id,
+                    "name": row.name,
+                    "movie_id": row.movie_id,
+                    "title": row.title,
+                    "line": row.line
+                }
+            )
     json = None
     if json is None:
         raise HTTPException(status_code=404, detail="line not found.")
@@ -44,23 +57,44 @@ def get_conversations(conversation_id: str):
     for that specific
                 conversation_id
     """
-    characters = db.characters
-    conversations = db.conversations
-    movies = db.movies
-    conversation_id_lines = db.conversation_id_lines
-    if conversation_id in conversations.keys():
-        return (
-            {
-                "movie_id": conversations[conversation_id]["movie_id"],
-                "title": movies[conversations[conversation_id]["movie_id"]]
-                ["title"],
-                "char1_name": characters[conversations[conversation_id]
-                ["character1_id"]]["name"],
-                "char2_name": characters[conversations[conversation_id]
-                ["character2_id"]]["name"],
-                "dialogue": conversation_id_lines.get(conversation_id)
-            }
-        )
+    stmt = f"""SELECT
+                conversations.movie_id AS movie_id,
+                movies.title AS title,
+                conversations.character1_id AS char1_id,
+                conversations.character2_id as char2_id,
+                char1.name AS name1,
+                char2.name AS name2,
+                array_agg(lines.line_text) AS dialogues
+            FROM
+                conversations
+                JOIN movies ON conversations.movie_id = movies.movie_id
+                JOIN characters AS char1 ON 
+                    conversations.character1_id = char1.character_id
+                JOIN characters AS char2 ON 
+                    conversations.character2_id = char2.character_id
+                JOIN lines on conversations.conversation_id = lines.conversation_id
+            WHERE
+                conversations.conversation_id = {conversation_id}
+            GROUP BY
+                conversations.movie_id,
+                movies.title,
+                conversations.character1_id,
+                conversations.character2_id,
+                char1.name,
+                char2.name;"""
+
+    with db.engine.connect() as conn:
+        result = conn.execute(sqlalchemy.text(stmt))
+        for row in result:
+            return (
+                {
+                    "movie_id": row.movie_id,
+                    "title": row.title,
+                    "char1_name": row.name1,
+                    "char2_name": row.name2,
+                    "dialogue": row.dialogues
+                }
+            )
     json = None
     if json is None:
         raise HTTPException(status_code=404, detail="conversation not found.")
@@ -85,7 +119,7 @@ def list_lines(
     * 'line_sort': The internal id of the line sort
     * `movie_title`: The title of the movie.
     * 'character_id': the internal id of the character in the movie
-    * `num_of_lines': The total number of lines the character has in the movie
+    * `line_text': The text for that specific line_id
 
     You can filter for lines whose line_text contain a string by using the
     `word` query parameter.
@@ -100,37 +134,48 @@ def list_lines(
     maximum number of results to return. The `offset` query parameter specifies the
     number of results to skip before returning results.
     """
-    # accessing movies database
-    sortedLineSort = db.sortedLineSort
-    sortedLineText = db.sortedLineText
-    sortedLineId = db.sortedLineId
-
-    movies = db.movies
-
-    lst = []
-
     if sort == line_sort_options.line_id:
-        lst = sortedLineId
-    if sort == line_sort_options.line_text:
-        lst = sortedLineText
-    if sort == line_sort_options.line_sort:
-        lst = sortedLineSort
+        order_by = db.lines.c.line_id
+    elif sort == line_sort_options.line_text:
+        order_by = db.lines.c.line_text
+    elif sort == line_sort_options.line_sort:
+        order_by = db.lines.c.line_sort
+    else:
+        assert False
+
+    stmt = (
+        sqlalchemy.select(
+            db.lines.c.line_id,
+            db.lines.c.character_id,
+            db.lines.c.movie_id,
+            db.lines.c.conversation_id,
+            db.lines.c.line_sort,
+            db.lines.c.line_text,
+            db.movies.c.title
+        )
+        .select_from(
+            db.lines.join(
+                db.movies,
+                db.lines.c.movie_id == db.movies.c.movie_id
+            )
+        )
+        .limit(limit)
+        .offset(offset)
+        .order_by(order_by, db.lines.c.line_id)
+    )
 
     if name != "":
-        lst = list(filter(lambda x: name.lower() in x["line_text"].lower(), lst))
+        stmt = stmt.where(db.lines.c.line_text.ilike(f"%{name}%"))
 
-    json = []
-    for dict in lst:
-        x = {
-                "line_id": int(dict["line_id"]),
-                "character_id": int(dict["character_id"]),
-                "movie_title": movies[dict["movie_id"]]["title"],
-                "line_sort": dict["line_sort"],
-                "line_text": dict["line_text"]
-        }
-        if len(json) < limit:
-            json.append(x)
-        else:
-            break
-    json = json[offset: len(json)]
+    with db.engine.connect() as conn:
+        result = conn.execute(stmt)
+        json = []
+        for row in result:
+            json.append({
+                "line_id": row.line_id,
+                "character_id": row.character_id,
+                "movie_title": row.title,
+                "line_sort": row.line_sort,
+                "line_text": row.line_text
+        })
     return json

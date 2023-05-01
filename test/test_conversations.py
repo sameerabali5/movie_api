@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 from src.api.server import app
 from src import database as db
+import sqlalchemy
 
 client = TestClient(app)
 
@@ -17,9 +18,13 @@ def test_post_1():
                           ]
                         })
     assert response.status_code == 200
-    lastConvo = db.conversations_logs[-1]
-    conversation_id = int(lastConvo["conversation_id"])
-    assert response.json() == conversation_id
+    conn = db.engine.connect()
+    lastConvo = conn.execute(
+        sqlalchemy.text(
+            """SELECT conversation_id FROM conversations 
+            ORDER BY conversation_id DESC LIMIT 1;"""))
+    newConvoId = lastConvo.fetchone()[0]
+    assert response.json() == newConvoId
 
 def test_post_2():
     response = client.post("/movies/615/conversations/", json={

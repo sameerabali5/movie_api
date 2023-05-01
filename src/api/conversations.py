@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from src import database as db
 from pydantic import BaseModel
 from typing import List
+import sqlalchemy
 
 
 # FastAPI is inferring what the request body should look like
@@ -17,32 +18,6 @@ class ConversationJson(BaseModel):
     lines: List[LinesJson]
 
 router = APIRouter()
-
-def append_line_logs(line_id, char_id, movie_id, conv_id, sort, text):
-    """Appends information to respective arrays"""
-    line = {
-        "line_id": str(line_id),
-        "character_id": str(char_id),
-        "movie_id": str(movie_id),
-        "conversation_id": str(conv_id),
-        "line_sort": str(sort),
-        "line_text": str(text)
-    }
-    db.lines_logs.append(line)
-    db.lines_to_add.append(line)
-    db.update_lines_log()
-
-def append_conv_logs(conv_id, char1, char2, movie_id):
-    """Appends information to respective arrays"""
-    convo = {
-        "conversation_id": str(conv_id),
-        "character1_id": str(char1),
-        "character2_id": str(char2),
-        "movie_id": str(movie_id)
-    }
-    db.conversations_logs.append(convo)
-    db.conversations_to_add.append(convo)
-    db.update_convos_log()
 
 
 @router.post("/movies/{movie_id}/conversations/", tags=["movies"])
@@ -61,26 +36,42 @@ def add_conversation(movie_id: int, conversation: ConversationJson):
 
     The endpoint returns the id of the resulting conversation that was created.
     """
-    movies = db.movies
-    characters = db.characters
     char1 = conversation.character_1_id
     char2 = conversation.character_2_id
+    conn = db.engine.connect()
 
-    if str(movie_id) not in movies:
+    #Error 1
+    moviecheck = conn.execute(
+        sqlalchemy.text(f"""SELECT COUNT(*) FROM movies "
+                            "WHERE movie_id = {movie_id}""")).fetchone()
+    if moviecheck[0] == 0:
         raise HTTPException(status_code=404,
                             detail="Movie not found.")
 
-    if str(char1) not in characters or str(char2) not in characters:
+    #Error 2
+    movie1 = conn.execute(
+        sqlalchemy.text(f"""SELECT COUNT(*) FROM characters "
+                        "WHERE character_id = {char1}""")).fetchone()
+    movie2 = conn.execute(
+        sqlalchemy.text(f"""SELECT COUNT(*) FROM characters "
+                        "WHERE character_id = {char2}""")).fetchone()
+    valid_1 = movie1[0]
+    valid_2 = movie2[0]
+    if valid_1 == 0 or valid_2 == 0:
         raise HTTPException(status_code=404,
                             detail="Character not found.")
 
-    movie_char1 = characters[str(char1)]["movie_id"]
-    movie_char2 = characters[str(char2)]["movie_id"]
-
-    if str(movie_id) != movie_char1 or str(movie_id) != movie_char2:
+    #Error 3
+    movie_char1 = conn.execute(
+        sqlalchemy.text(f"""SELECT movie_id FROM characters "
+                        "WHERE character_id = {char1}""")).fetchone()
+    movie_char2 = conn.execute(
+        sqlalchemy.text(f"""SELECT movie_id FROM characters "
+                        "WHERE character_id = {char2}""")).fetchone()
+    if (movie_char1[0]) != movie_id or (movie_char2[0]) != movie_id:
         raise HTTPException(status_code=404,
                             detail="Characters not in movie.")
-
+    #Error 4
     if char1 == char2:
         raise HTTPException(status_code=404,
                             detail="Characters are not unique.")
@@ -90,14 +81,36 @@ def add_conversation(movie_id: int, conversation: ConversationJson):
         line_text = conversation.lines[0].line_text
         if access_id == char1 or access_id == char2:
             line_sort = line + 1
-            lastConvo = db.conversations_logs[-1]
-            conversation_id = int(lastConvo["conversation_id"]) + 1
-            lastLine = db.lines_logs[-1]
-            line_id = int(lastLine["line_id"]) + 1
-            append_line_logs(line_id, access_id, movie_id,
-                             conversation_id, line_sort, line_text)
-            append_conv_logs(conversation_id, char1, char2, movie_id)
-            return conversation_id
+            lastConvo = conn.execute(
+                sqlalchemy.text(
+                    """SELECT conversation_id FROM conversations 
+                    ORDER BY conversation_id DESC LIMIT 1;"""))
+            newConvoId = lastConvo.fetchone()[0] + 1
+            lastLine = conn.execute(
+                sqlalchemy.text(
+                    """SELECT line_id FROM lines 
+                    ORDER BY line_id DESC LIMIT 1;"""))
+            newLineId = lastLine.fetchone()[0] + 1
+            insert_convo = db.conversations.insert()\
+                .values(
+                conversation_id = newConvoId,
+                character1_id = char1,
+                character2_id = char2,
+                movie_id = movie_id)
+            conn.execute(insert_convo)
+            conn.commit()
+            insert_line = db.lines.insert()\
+                .values(
+                line_id = newLineId,
+                character_id = access_id,
+                movie_id = movie_id,
+                conversation_id = newConvoId,
+                line_sort = line_sort,
+                line_text = line_text
+            )
+            conn.execute(insert_line)
+            conn.commit()
+            return newConvoId
     raise HTTPException(status_code=404, detail="Invalid line.")
 
 
