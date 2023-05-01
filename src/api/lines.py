@@ -1,9 +1,8 @@
+import sqlalchemy
 from fastapi import APIRouter, HTTPException
 from enum import Enum
 from src import database as db
 router = APIRouter()
-import sqlalchemy
-from sqlalchemy import inspect
 
 @router.get("/lines/{line_id}", tags=["lines"])
 def get_line(line_id: str):
