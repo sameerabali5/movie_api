@@ -45,10 +45,13 @@ def get_character(id: str):
                     FROM
                         conversations
                     JOIN
-                        characters ON conversations.character1_id = characters.character_id
-                            OR conversations.character2_id = characters.character_id
+                        characters ON 
+                        conversations.character1_id = characters.character_id
+                            OR 
+                            conversations.character2_id = characters.character_id
                     JOIN
-                        convosQuery ON conversations.conversation_id = convosQuery.conversation_id
+                        convosQuery ON c
+                        onversations.conversation_id = convosQuery.conversation_id
                     JOIN
                         lines ON conversations.conversation_id = lines.conversation_id
                     WHERE
