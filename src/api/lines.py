@@ -59,8 +59,8 @@ def get_conversations(conversation_id: str):
     stmt = f"""SELECT
                 conversations.movie_id AS movie_id,
                 movies.title AS title,
-                conversations.character1_id AS char1_id,
-                conversations.character2_id as char2_id,
+                conversations.character1_id,
+                conversations.character2_id,
                 char1.name AS name1,
                 char2.name AS name2,
                 array_agg(lines.line_text) AS dialogues

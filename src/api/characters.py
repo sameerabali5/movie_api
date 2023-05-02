@@ -31,39 +31,34 @@ def get_character(id: str):
         """Function returns the list of characters that the
         character has the most conversations with,
         sorted by number of lines together """
-        stmt = f"""SELECT 
-                    characters.character_id,
-                    characters.name AS character,
-                    characters.gender,
-                    COUNT(lines.line_id) AS number_of_lines_together
-                FROM 
-                    conversations
-                JOIN 
-                    characters ON conversations.character1_id = characters.character_id 
-                    OR conversations.character2_id = characters.character_id
-                JOIN 
-                    (
-                        SELECT 
-                            conversations.conversation_id
-                        FROM 
-                            conversations
-                        WHERE 
-                            movie_id = {movieID}
-                            AND character1_id = {charID}
-                            OR character2_id = {charID}
-                    ) AS convosQuery ON conversations.conversation_id = 
-                    convosQuery.conversation_id
-                LEFT JOIN 
-                    lines ON conversations.conversation_id = lines.conversation_id
-                WHERE 
-                    characters.character_id != {charID}
-                GROUP BY 
-                    characters.character_id, 
-                    characters.name, 
-                    characters.gender
-                ORDER BY number_of_lines_together DESC
-                LIMIT 5;"""
-
+        stmt = f"""WITH convosQuery AS (
+                        SELECT conversations.conversation_id
+                        FROM conversations
+                        WHERE movie_id = {movieID}
+                            AND (character1_id = {charID} OR character2_id = {charID})
+                    )
+                    SELECT
+                        characters.character_id,
+                        characters.name,
+                        characters.gender,
+                        COUNT(lines.line_id) AS num_lines
+                    FROM
+                        conversations
+                    JOIN
+                        characters ON conversations.character1_id = characters.character_id
+                            OR conversations.character2_id = characters.character_id
+                    JOIN
+                        convosQuery ON conversations.conversation_id = convosQuery.conversation_id
+                    JOIN
+                        lines ON conversations.conversation_id = lines.conversation_id
+                    WHERE
+                        characters.character_id != {charID}
+                    GROUP BY
+                        characters.character_id,
+                        characters.name,
+                        characters.gender
+                    ORDER BY
+                        num_lines DESC"""
         json = []
         with db.engine.connect() as conn:
             result = conn.execute(sqlalchemy.text(stmt))
@@ -71,9 +66,9 @@ def get_character(id: str):
                 json.append(
                     {
                         "character_id": row.character_id,
-                        "character": row.character,
+                        "character": row.name,
                         "gender": row.gender,
-                        "number_of_lines_together": row.number_of_lines_together
+                        "number_of_lines_together": row.num_lines
                     }
                 )
         return json
@@ -85,7 +80,6 @@ def get_character(id: str):
                 WHERE characters.character_id = {id}
                 GROUP BY characters.character_id, characters.name, movies.title
                 ORDER BY characters.character_id;"""
-
 
     with db.engine.connect() as conn:
         result = conn.execute(sqlalchemy.text(stmt))
