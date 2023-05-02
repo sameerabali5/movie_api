@@ -29,7 +29,7 @@ def get_movie(movie_id: str):
         stmt = f"""SELECT characters.character_id, characters.name, 
                     COUNT(lines.line_id) AS num_lines
                     FROM characters
-                    LEFT JOIN lines ON characters.character_id = lines.character_id
+                    JOIN lines ON characters.character_id = lines.character_id
                     WHERE lines.movie_id = {movie_id}
                     GROUP BY characters.character_id
                     ORDER BY num_lines DESC
